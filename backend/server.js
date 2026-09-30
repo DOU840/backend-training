@@ -21,6 +21,8 @@ const taskRouter = require('./routes/taskRouter')
 
 const app = express()
 
+app.set('trust proxy', 1);
+
 app.use(helmet())
 app.use(cors())
 

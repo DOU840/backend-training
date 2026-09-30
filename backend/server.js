@@ -51,9 +51,9 @@ app.use('/users', userRouter)
 app.use('/auth', authRouter)
 app.use('/tasks', taskRouter)
 
-app.listen(5000, ()=>{
-    console.log('lancé sur le server http://localhost:5000')
-})
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
+
 /*
 app.patch('/products/:id',(req,res)=>{
     const product = products.find(p => p.id === Number(req.params.id))

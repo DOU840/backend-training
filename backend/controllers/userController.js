@@ -1,8 +1,8 @@
 const User = require("../models/User")
-
+const AppError = require('../utils/appError')
 // CREATE USER
 
-exports.createUser = async (req, res) => {
+exports.createUser = async (req, res,next) => {
     try {
         const user = await User.create(req.body)
         const userSansMdp = user.toObject()
@@ -12,35 +12,14 @@ exports.createUser = async (req, res) => {
             data: user
         })
     } catch (err) {
-        if (err.name === 'validationError') {
-            const message = Object.values(err.errors).map(e => e.message)
-            return res.status(400).json({
-                success: false,
-                error: 'donnée invalide',
-                datails: message
-            })
-        }
-
-        if (err.code === 11000) {
-            const champ = Object.keys(err.keyPattern)[0]
-            return res.status(409).json({
-                success: false,
-                error: `La valeur du ${champ} est deja utilisé`
-            })
-        }
-
-        res.status(500).json({
-            success: false,
-            error: 'erreur serveur',
-            details: err.message
-        })
+        next(err)
     }
 
 }
 
 // AFFICHER TOUT LES UTILISATEURS 
 
-exports.getAllUsers = async (req, res) => {
+exports.getAllUsers = async (req, res,next) => {
     try {
         const users = await User.find()
         res.status(200).json({
@@ -48,23 +27,17 @@ exports.getAllUsers = async (req, res) => {
             utilisateurs: users
         })
     } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'erreur serveur',
-            details: err.message
-        })
+        next(err)
     }
 }
 
 // RECUPERER UN UTILISATEUR
 
-exports.getUserById = async (req, res) => {
+exports.getUserById = async (req, res,next) => {
     try {
         const user = await User.findById(req.params.id)
         if(!user){
-            return res.status(404).json({
-                error: 'donnée introuvable'
-            })
+            throw new AppError('Données introuvables',404)
         }
         res.status(200).json({
             success: true,
@@ -72,24 +45,13 @@ exports.getUserById = async (req, res) => {
 
         })
     } catch (err) {
-        if(err.name === 'castError'){
-            return res.status(400).json({
-                success: false,
-                error: "identifiant invalide"
-            })
-        }
-
-        res.status(500).json({
-            success: false,
-            error: 'erreur serveur',
-            details: err.message
-        })
+        next(err)
     }
 }
 
 // MODIFIER UN UTILISATEUR
 
-exports.updateUser = async (req, res) => {
+exports.updateUser = async (req, res,next) => {
     try {
         const newUser = await User.findByIdAndUpdate(
             req.params.id,
@@ -98,10 +60,7 @@ exports.updateUser = async (req, res) => {
         );
 
         if (!newUser) {
-            return res.status(404).json({
-                success: false,
-                error: 'User introuvable'
-            });
+            throw new AppError('donnée introuvable', 400)
         }
 
         res.status(200).json({
@@ -109,62 +68,24 @@ exports.updateUser = async (req, res) => {
             data: newUser
         });
     } catch (err) {
-        if (err.name === 'ValidationError') {
-            const messages = Object.values(err.errors).map(e => e.message);
-            return res.status(400).json({
-                success: false,
-                error: 'Données invalides',
-                details: messages
-            });
-        }
-
-        if (err.code === 11000) {
-            const champ = Object.keys(err.keyPattern)[0];
-            return res.status(409).json({
-                success: false,
-                error: `La valeur du champ "${champ}" est déjà utilisée`
-            });
-        }
-
-        if (err.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                error: 'Identifiant invalide'
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            error: 'Erreur serveur',
-            details: err.message
-        });
+        next(err)
     }
 };
 
 // SUPPRIMER UN USER
 
-exports.deleteUser = async(req,res)=>{
+exports.deleteUser = async(req,res, next)=>{
     try {
         const user = await User.findByIdAndDelete(req.params.id)
         if(!user){
-            return res.status(404).json(
-                {
-                    success: false,
-                    error: 'user introuvable'
-                }
-            )
+            throw new AppError('données introuvables')
         }
         res.status(200).json({
             success : true,
             message : 'user supprimé'
         })
     } catch (err) {
-        if(err.name === 'castError'){
-            return res.status(400).json({
-                success: false,
-                error : 'donnée introuvale'
-            })
-        }
+        next(err)
     }
 }
 

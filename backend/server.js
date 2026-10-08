@@ -13,12 +13,15 @@ const cors = require('cors')
 
 const rateLimit = require('express-rate-limit')
 
+const morgan = require('morgan')
+
 const userRouter = require('./routes/userRouter')
 
 const authRouter = require('./routes/authRouter')
 
 const taskRouter = require('./routes/taskRouter')
 
+const errorHandler = require('./middleware/errorHandler')
 const app = express()
 
 app.set('trust proxy', 1);
@@ -39,23 +42,31 @@ app.use(globalLimit)
 
 app.use(express.json())
 
-const User = require('./models/User')
-
-mongoose.connect(process.env.MONGO_URI)
+const uri = process.env.NODE_ENV==='test'
+? process.env.MONGO_URI_TEST: process.env.MONGO_URI
+mongoose.connect(uri)
 .then(()=>{
-    console.log("mongodb connecté !")
+    console.log(`mongodb connecté ! (${process.env.NODE_ENV || 'development'})`)
 })
 .catch((error)=>{
-    console.log("erreur mongodb",error)
+    console.error("erreur mongodb",error)
 })
-
+if(process.env.NODE_ENV==='development'){
+    app.use(morgan('dev'))
+}else{
+    app.use(morgan('combined'))
+}
 app.use('/users', userRouter)
 app.use('/auth', authRouter)
 app.use('/tasks', taskRouter)
+app.use(errorHandler)
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
+if(process.env.NODE_ENV !== 'test'){
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));
+}
 
+module.exports= app
 /*
 app.patch('/products/:id',(req,res)=>{
     const product = products.find(p => p.id === Number(req.params.id))

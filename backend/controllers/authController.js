@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 
+const AppError = require('../utils/appError')
+
 // GENERATION D'UN TOKEN POU UN UTILISATEUR
 
 const generate = (user) => {
@@ -13,7 +15,7 @@ const generate = (user) => {
 
 // REGISTER-POST /auth/register
 
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
     try {
 
         const {nom, email, motDePasse, age, ville}=req.body
@@ -30,54 +32,25 @@ exports.register = async (req, res) => {
             data: { userSansMdp, token }
         })
     } catch (err) {
-        if (err.name === 'ValidationError') {
-            const messages = Object.values(err.errors).map(e => e.message)
-            return res.status(400).json({
-                success: false,
-                error: 'donnée invalide',
-                details: messages
-
-            })
-        }
-        if (err.code === 11000) {
-            const champ = Object.keys(err.keyPattern)[0]
-            return res.status(409).json({
-                success: false,
-                error: ` la valeur saisi dans le champ ${champ} est deja utilisé `,
-
-
-            })
-        }
-
-        res.status(500).json({
-            success: false,
-            error: 'erreur serveur',
-            details: err.message
-        })
-    }
+        next(err)
+}
 }
 
 // LOGIN-POST /auth/login
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
     try {
         // RECUPERER L'EMAIL ET MOT DE PASSE
         const { email, motDePasse } = req.body
         // verifier que les deux champ sont fourni
         if(!email || !motDePasse){
-            return res.json(400).json({
-                success : false,
-                error: 'email et motDePasse sont obligatoire'
-            })
+            throw new AppError('emails et motDePasse sont obligatoire', 400)
         }
         // chercher utilisatuer par email et recuperer son motDePasse
         const user = await User.findOne({email}).select('+motDePasse')
         // verifier email + motDePasse
         if(!user || !(await user.compareMotDePasse(motDePasse))){
-            return res.status(401).json({
-                success: false,
-                error : 'Identifiant invalide'
-            })
+          throw new AppError('Identifiant invalides', 401)
         }
         // generation du token
         const token = generate(user)
@@ -88,12 +61,8 @@ exports.login = async (req, res) => {
             success: true,
             data:{userSansMdp, token}
         })
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'erreur serveur',
-            details: error.message
-        })
+    } catch (err) {
+        next(err)
     }
 }
 
@@ -103,3 +72,4 @@ exports.getMe = async(req, res)=>{
         data: req.user
     })
 }
+

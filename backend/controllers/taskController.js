@@ -1,8 +1,8 @@
 const Task = require('../models/Task')
-
+const AppError = require('../utils/appError')
 // créer un tâche
 
-exports.createTask = async(req, res)=>{
+exports.createTask = async(req, res, next)=>{
    try {
     const task = await Task.create(
         {
@@ -16,20 +16,15 @@ exports.createTask = async(req, res)=>{
         success: true,
         data : task
     })
-   } catch (error) {
-    res.status(500).json({
-        success: false,
-        error: 'serveur erreur',
-        details:error.message
-
-    })
+   } catch (err) {
+    next(err)
    }
 
 }
 
 // recupere mon tâche
 
-exports.getMyTasks = async(req,res)=>{
+exports.getMyTasks = async(req,res, next)=>{
     try {
 
         const tasks = await Task.find({
@@ -39,13 +34,8 @@ exports.getMyTasks = async(req,res)=>{
             success: true,
             data : tasks
         })
-    } catch (error) {
-        res.status(500).json({
-        success: false,
-        error: 'serveur erreur',
-        details:error.message
-
-    })
+    } catch (err) {
+        next(err)
     }
 }
 
@@ -68,10 +58,7 @@ exports.updateTask = async (req, res) => {
 
         // 1. Vérifier l'existence
         if (!task) {
-            return res.status(404).json({
-                success: false,
-                error: 'Tâche non trouvée ou non autorisée'
-            });
+            throw new AppError('Tâche non trouvée ou non autorisée',404)
         }
 
         // 2. Renvoyer la réponse (CE QUI MANQUAIT !)
@@ -81,11 +68,7 @@ exports.updateTask = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Erreur serveur',
-            details: error.message
-        });
+        next(err)
     }
 };
 // supprimer task
@@ -99,10 +82,7 @@ exports.deleteTask = async (req, res) => {
 
         // 1. D'abord, on vérifie si la tâche existe (et a été supprimée)
         if (!task) {
-            return res.status(404).json({
-                success: false,
-                error: 'Tâche non trouvée ou non autorisée'
-            });
+            throw new AppError('Tâche non trouvée ou non autorisée',404)
         }
 
         // 2. Si on arrive ici, la suppression a réussi
@@ -112,10 +92,6 @@ exports.deleteTask = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Erreur serveur',
-            details: error.message
-        });
+        next(err)
     }
 };

@@ -39,9 +39,28 @@ exports.getMyTasks = async(req,res, next)=>{
     }
 }
 
+exports.getTaskById = async (req, res, next) => {
+    try {
+        const task = await Task.findOne({
+            _id: req.params.id,
+            user: req.user._id   // ⬅️ SÉCURITÉ : seulement ses propres tâches
+        })
+
+        if (!task) {
+            throw new AppError('Tâche non trouvée', 404)
+        }
+
+        res.status(200).json({
+            success: true,
+            data: task
+        })
+    } catch (err) {
+        next(err)
+    }
+}
 // modifier un tâche
 
-exports.updateTask = async (req, res) => {
+exports.updateTask = async (req, res,next) => {
     try {
         const { titre, description } = req.body;
 
@@ -53,7 +72,7 @@ exports.updateTask = async (req, res) => {
         const task = await Task.findOneAndUpdate(
             { _id: req.params.id, user: req.user._id }, // Filtre : ID + propriétaire
             updateData,                                  // Données à mettre à jour
-            { new: true, runValidators: true }           // Options
+            { returnDocument: 'after', runValidators: true }           // Options
         );
 
         // 1. Vérifier l'existence
@@ -67,13 +86,13 @@ exports.updateTask = async (req, res) => {
             data: task
         });
 
-    } catch (error) {
+    } catch (err) {
         next(err)
     }
 };
 // supprimer task
 
-exports.deleteTask = async (req, res) => {
+exports.deleteTask = async (req, res,next) => {
     try {
         const task = await Task.findOneAndDelete({
             _id: req.params.id,      // L'ID passé dans l'URL (DELETE /tasks/:id)
@@ -91,7 +110,7 @@ exports.deleteTask = async (req, res) => {
             data: {} // Convention REST : on renvoie un objet vide après un DELETE
         });
 
-    } catch (error) {
+    } catch (err) {
         next(err)
     }
 };

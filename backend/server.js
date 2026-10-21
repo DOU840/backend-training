@@ -42,15 +42,6 @@ app.use(globalLimit)
 
 app.use(express.json())
 
-const uri = process.env.NODE_ENV==='test'
-? process.env.MONGO_URI_TEST: process.env.MONGO_URI
-mongoose.connect(uri)
-.then(()=>{
-    console.log(`mongodb connecté ! (${process.env.NODE_ENV || 'development'})`)
-})
-.catch((error)=>{
-    console.error("erreur mongodb",error)
-})
 if(process.env.NODE_ENV==='development'){
     app.use(morgan('dev'))
 }else{
@@ -61,9 +52,33 @@ app.use('/auth', authRouter)
 app.use('/tasks', taskRouter)
 app.use(errorHandler)
 
-if(process.env.NODE_ENV !== 'test'){
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));
+const uri = process.env.NODE_ENV==='test'
+? process.env.MONGO_URI_TEST: process.env.MONGO_URI
+
+async function start() {
+    try {
+        await mongoose.connect(uri)
+        console.log(`mongodb connecté ! (${process.env.NODE_ENV || 'development'})`)
+
+        if (process.env.NODE_ENV !== 'test') {
+            const PORT = process.env.PORT || 5000
+            app.listen(PORT, () =>
+                console.log(`🚀 Serveur sur http://localhost:${PORT}`)
+            )
+        }
+    } catch (error) {
+        console.error('erreur mongodb', error)
+        process.exit(1)
+    }
+}
+
+if (process.env.NODE_ENV !== 'test') {
+    start()
+} else {
+    // Les tests gèrent leur propre connexion
+    mongoose.connect(uri).catch((error) => {
+        console.error('erreur mongodb', error)
+    })
 }
 
 module.exports= app

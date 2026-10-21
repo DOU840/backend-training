@@ -1,6 +1,6 @@
 
 
-const AppError = require('../utils/AppError')
+const AppError = require('../utils/appError')
 
 exports.authorize = (...rolesAuthorize) => {
     return (req, res, next) => {

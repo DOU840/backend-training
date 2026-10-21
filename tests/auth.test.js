@@ -194,6 +194,17 @@ describe('Post auth/login', () => {
             expect(res.status).toBe(400)
             expect(res.body.success).toBe(false)
         })
+        // test3: DELETE
+        test('retourne 400 + sans email', async () => {
+            const res = await request(app)
+                .post('/auth/register')
+                .send({"motDePasse": "secret124"})
+
+            // verification
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+        })
 
 
 

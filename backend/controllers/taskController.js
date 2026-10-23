@@ -65,12 +65,13 @@ exports.getTaskById = CatchAsync(async (req, res, next) => {
 // modifier un tâche
 
 exports.updateTask = CatchAsync(async (req, res, next) => {
-    const { titre, description } = req.body;
+    const { titre, description, termine } = req.body;
 
     // Liste blanche des champs modifiables
     const updateData = {};
     if (titre !== undefined) updateData.titre = titre;
     if (description !== undefined) updateData.description = description;
+    if (termine !== undefined) updateData.termine = termine;
 
     const task = await Task.findOneAndUpdate(
         { _id: req.params.id, user: req.user._id }, // Filtre : ID + propriétaire

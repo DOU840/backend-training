@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { del, get, post } from '../api'
+import { del, get, post, put } from '../api' // Ajout de 'put'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Tasks() {
@@ -15,12 +15,21 @@ export default function Tasks() {
   const [deletingId, setDeletingId] = useState(null)
   const [erreur, setErreur] = useState('')
 
-  async function loadTasks() {
+  // --- NOUVEAUX ÉTATS ---
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [stats, setStats] = useState({ total: 0, terminees: 0, enCours: 0 })
+  const [updatingId, setUpdatingId] = useState(null)
+
+  // --- MODIFICATION : on passe la page en paramètre ---
+  async function loadTasks(currentPage = 1) {
     setErreur('')
     setLoading(true)
     try {
-      const res = await get('/tasks')
+      // On demande la page actuelle avec 5 tâches par page
+      const res = await get(`/tasks?page=${currentPage}&limit=5`)
       setTasks(res.data ?? [])
+      setTotalPages(res.totalPages ?? 1) // On récupère le total de pages
     } catch (err) {
       setErreur(err.message || 'Impossible de charger les tâches')
     } finally {
@@ -28,9 +37,21 @@ export default function Tasks() {
     }
   }
 
+  // --- NOUVEAU : Charger les stats ---
+  async function loadStats() {
+    try {
+      const res = await get('/tasks/stats')
+      setStats(res.data) // { total, terminees, enCours }
+    } catch (err) {
+      console.error("Erreur stats", err)
+    }
+  }
+
+  // Au chargement, on charge les tâches de la page 1 et les stats
   useEffect(() => {
-    loadTasks()
-  }, [])
+    loadTasks(page)
+    loadStats()
+  }, [page]) // Se relance si la page change
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -40,7 +61,8 @@ export default function Tasks() {
       await post('/tasks', { titre, description })
       setTitre('')
       setDescription('')
-      await loadTasks()
+      await loadTasks(page) // On reste sur la page actuelle
+      await loadStats() // On met à jour les stats
     } catch (err) {
       setErreur(err.message || 'Erreur lors de la création')
     } finally {
@@ -52,11 +74,27 @@ export default function Tasks() {
     setDeletingId(id)
     try {
       await del(`/tasks/${id}`)
-      await loadTasks()
+      await loadTasks(page)
+      await loadStats()
     } catch (err) {
       setErreur(err.message || 'Erreur lors de la suppression')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  // --- NOUVEAU : Marquer comme terminé ---
+  async function toggleTermine(task) {
+    setUpdatingId(task._id)
+    try {
+      // On envoie l'inverse de la valeur actuelle
+      await put(`/tasks/${task._id}`, { termine: !task.termine })
+      await loadTasks(page)
+      await loadStats()
+    } catch (err) {
+      setErreur(err.message || 'Erreur lors de la mise à jour')
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -80,8 +118,25 @@ export default function Tasks() {
           </div>
         </div>
 
+        {/* --- NOUVEAU : Barre de statistiques --- */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+            <p className="text-slate-400 text-sm">Total</p>
+            <p className="text-2xl font-bold text-white">{stats.total}</p>
+          </div>
+          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+            <p className="text-slate-400 text-sm">Terminées</p>
+            <p className="text-2xl font-bold text-green-400">{stats.terminees}</p>
+          </div>
+          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+            <p className="text-slate-400 text-sm">En cours</p>
+            <p className="text-2xl font-bold text-yellow-400">{stats.enCours}</p>
+          </div>
+        </div>
+
         {/* Formulaire d'ajout */}
         <form onSubmit={handleCreate} className="mb-10 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+          {/* ... (inchangé) ... */}
           <h2 className="text-xl font-semibold text-white mb-4">Ajouter une tâche</h2>
           <div className="space-y-4">
             <input
@@ -125,9 +180,21 @@ export default function Tasks() {
           <div className="space-y-4">
             {tasks.map((task) => (
               <div key={task._id} className="bg-slate-800 p-5 rounded-xl border border-slate-700 flex justify-between items-start group hover:border-slate-500 transition">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{task.titre}</h3>
-                  {task.description && <p className="text-slate-400 mt-1">{task.description}</p>}
+                <div className="flex items-start gap-3">
+                  {/* --- NOUVEAU : Case à cocher pour "termine" --- */}
+                  <input 
+                    type="checkbox" 
+                    checked={task.termine} 
+                    onChange={() => toggleTermine(task)}
+                    disabled={updatingId === task._id}
+                    className="mt-1 w-5 h-5 accent-green-500 cursor-pointer"
+                  />
+                  <div>
+                    <h3 className={`text-lg font-semibold ${task.termine ? 'line-through text-slate-500' : 'text-white'}`}>
+                      {task.titre}
+                    </h3>
+                    {task.description && <p className="text-slate-400 mt-1">{task.description}</p>}
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDelete(task._id)}
@@ -140,6 +207,25 @@ export default function Tasks() {
             ))}
           </div>
         )}
+
+        {/* --- NOUVEAU : Boutons de pagination --- */}
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 hover:bg-slate-700 transition"
+          >
+            Précédent
+          </button>
+          <span className="text-slate-400 text-sm">Page {page} sur {totalPages}</span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 hover:bg-slate-700 transition"
+          >
+            Suivant
+          </button>
+        </div>
 
       </div>
     </div>

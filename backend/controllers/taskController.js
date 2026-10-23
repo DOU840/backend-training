@@ -22,11 +22,27 @@ exports.createTask = CatchAsync(async (req, res, next) => {
 // recupere mon tâche
 
 exports.getMyTasks = CatchAsync(async (req, res, next) => {
-    const tasks = await Task.find({
-        user: req.user._id
-    })
+    // 1. On récupère les paramètres de l'URL (avec des valeurs par défaut)
+    const page = parseInt(req.query.page) || 1  // Page actuelle (défaut: 1)
+    const limit = parseInt(req.query.limit) || 10  // Nb par page (défaut: 10)
+    const skip = (page - 1) * limit  // Calcul du saut
+
+    // 2. On compte le total de tâches de l'utilisateur (pour info)
+    const total = await Task.countDocuments({ user: req.user._id })
+
+    // 3. On récupère la page demandée
+    const tasks = await Task.find({ user: req.user._id })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })  // Optionnel : les plus récentes d'abord
+
+    // 4. On renvoie une réponse enrichie
     res.status(200).json({
         success: true,
+        count: tasks.length,      // Combien dans cette page
+        total: total,             // Combien au total
+        page: page,               // Page actuelle
+        totalPages: Math.ceil(total / limit),  // Combien de pages en tout
         data: tasks
     })
 })

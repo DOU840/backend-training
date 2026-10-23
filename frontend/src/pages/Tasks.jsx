@@ -18,7 +18,7 @@ export default function Tasks() {
   // --- NOUVEAUX ÉTATS ---
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [stats, setStats] = useState({ total: 0, terminees: 0, enCours: 0 })
+  const [stats, setStats] = useState({ total: 0, termine: 0, enCours: 0 })
   const [updatingId, setUpdatingId] = useState(null)
 
   // --- MODIFICATION : on passe la page en paramètre ---
@@ -126,7 +126,7 @@ export default function Tasks() {
           </div>
           <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
             <p className="text-slate-400 text-sm">Terminées</p>
-            <p className="text-2xl font-bold text-green-400">{stats.terminees}</p>
+            <p className="text-2xl font-bold text-green-400">{stats.termine}</p>
           </div>
           <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
             <p className="text-slate-400 text-sm">En cours</p>

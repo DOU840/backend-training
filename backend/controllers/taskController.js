@@ -109,3 +109,42 @@ exports.deleteTask = CatchAsync(async (req, res, next) => {
         data: {} // Convention REST : on renvoie un objet vide après un DELETE
     });
 })
+
+// Obtenir les statistique des tâche
+
+exports.getTaskStats = CatchAsync(async(req,res,next)=>{
+    const stats = await Task.aggregate([
+        //le filtre qui ne garde que les tâche de utilisateur connecté
+        {
+            $match :{user: req.user._id}
+        },
+        // Regrouper par le champ termine (true/false)
+        {
+            $group :{
+                _id : "$termine",
+                nombre: {$sum : 1}
+            }
+        },
+        //filtrer pour l'affisage propre
+        {
+            $sort : {_id:1}
+        }
+    ])
+
+    //formater le stats en un objet facile à utilisé
+    let totalTermine=0
+    let totalEnCours=0
+    stats.forEach(stat =>{
+        if(stat._id===true) totalTermine=stat.nombre
+        if(stat._id===false) totalEnCours= stat.nombre
+    })
+
+    res.status(200).json({
+        success: true,
+        data:{
+            total: totalTermine + totalEnCours,
+            enCours: totalEnCours,
+            termine: totalTermine
+        }
+    })
+})
